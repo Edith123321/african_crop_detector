@@ -1,1 +1,6 @@
- tensorflow numpy pandas matplotlib seaborn scikit-learn
+ tensorflow 
+ numpy 
+ pandas 
+ matplotlib 
+ seaborn 
+ scikit-learn
