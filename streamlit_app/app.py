@@ -296,6 +296,28 @@ class ModelRetrainer:
     def prepare_training_data(self, dataset_path, validation_split=0.2):
         """Prepare training and validation datasets with error handling"""
         try:
+            # Verify dataset path exists and has content
+            if not os.path.exists(dataset_path):
+                raise FileNotFoundError(f"Dataset path does not exist: {dataset_path}")
+            
+            # Check if directory has subdirectories
+            subdirs = [d for d in os.listdir(dataset_path) 
+                      if os.path.isdir(os.path.join(dataset_path, d)) and d in self.class_names]
+            
+            if not subdirs:
+                raise ValueError(f"No valid class directories found in {dataset_path}. Available: {os.listdir(dataset_path)}")
+            
+            # Count total images to ensure we have data
+            total_images = 0
+            for class_dir in subdirs:
+                class_path = os.path.join(dataset_path, class_dir)
+                images = [f for f in os.listdir(class_path) 
+                         if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+                total_images += len(images)
+            
+            if total_images == 0:
+                raise ValueError("No images found in the dataset directories")
+            
             # Create dataset from directory
             full_dataset = tf.keras.preprocessing.image_dataset_from_directory(
                 dataset_path,
@@ -308,6 +330,12 @@ class ModelRetrainer:
             )
             
             train_dataset, val_dataset = full_dataset
+            
+            # Check if datasets have data
+            if len(train_dataset) == 0:
+                raise ValueError("Training dataset is empty")
+            if len(val_dataset) == 0:
+                raise ValueError("Validation dataset is empty")
             
             # Preprocess the data
             train_dataset = train_dataset.map(
@@ -326,21 +354,38 @@ class ModelRetrainer:
             raise Exception(f"Error preparing training data: {str(e)}")
     
     def retrain_model(self, dataset_path, epochs=10, learning_rate=0.0001):
-        """Retrain model with new data - ACTUAL IMPLEMENTATION"""
+        """Retrain model with new data - FIXED IMPLEMENTATION"""
         try:
+            # Verify dataset path exists before starting
+            if not os.path.exists(dataset_path):
+                return False, f"Dataset path not found: {dataset_path}", None
+                
+            # Double-check dataset structure
+            is_valid, validation_msg = self.validate_dataset_structure(dataset_path)
+            if not is_valid:
+                return False, f"Dataset validation failed: {validation_msg}", None
+            
             # Load current model
             if not os.path.exists(self.base_model_path):
                 return False, f"Base model not found at {self.base_model_path}", None
                 
+            st.info("🔄 Loading base model...")
             self.model = tf.keras.models.load_model(self.base_model_path)
             
-            # Prepare data
+            # Prepare data with progress tracking
+            st.info("📊 Preparing training data...")
             train_dataset, val_dataset = self.prepare_training_data(dataset_path)
             
+            st.info(f"📈 Training data prepared: {len(train_dataset)} batches for training, {len(val_dataset)} for validation")
+            
             # Unfreeze some layers for fine-tuning
+            trainable_count = 0
             for layer in self.model.layers[-20:]:
                 if hasattr(layer, 'trainable'):
                     layer.trainable = True
+                    trainable_count += 1
+            
+            st.info(f"🔧 Unfrozen {trainable_count} layers for fine-tuning")
             
             # Compile with lower learning rate for fine-tuning
             self.model.compile(
@@ -364,6 +409,7 @@ class ModelRetrainer:
             ]
             
             # Train the model with progress tracking
+            st.info(f"🚀 Starting training for {epochs} epochs...")
             self.retrain_history = self.model.fit(
                 train_dataset,
                 validation_data=val_dataset,
@@ -374,14 +420,26 @@ class ModelRetrainer:
             
             # Save retrained model with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            retrained_path = os.path.join(BASE_DIR, f'../models/retrained_model_{timestamp}.h5')
+            models_dir = os.path.join(BASE_DIR, '../models')
+            os.makedirs(models_dir, exist_ok=True)
+            retrained_path = os.path.join(models_dir, f'retrained_model_{timestamp}.h5')
+            
+            st.info("💾 Saving retrained model...")
             self.model.save(retrained_path)
+            
+            # Verify the model was saved
+            if os.path.exists(retrained_path):
+                file_size = os.path.getsize(retrained_path) / (1024 * 1024)  # MB
+                st.info(f"✅ Model saved successfully: {retrained_path} ({file_size:.1f} MB)")
+            else:
+                return False, "Failed to save retrained model", None
             
             return True, retrained_path, self.retrain_history
             
         except Exception as e:
-            return False, f"Retraining failed: {str(e)}", None
-
+            error_msg = f"Retraining failed: {str(e)}"
+            st.error(error_msg)
+            return False, error_msg, None
 # Initialize predictor and retrainer
 predictor = CropDiseasePredictor(MODEL_PATH, CLASS_NAMES)
 retrainer = ModelRetrainer(MODEL_PATH, CLASS_NAMES)
@@ -771,73 +829,101 @@ def show_retrain_interface():
         uploaded_zip = st.file_uploader(
             "Upload dataset (ZIP file)", 
             type=['zip'],
-            help="Upload a ZIP file containing your organized dataset with class folders"
+            help="Upload a ZIP file containing your organized dataset with class folders",
+            key="dataset_uploader"
         )
         
         if uploaded_zip is not None:
-            # Extract and validate dataset
-            with tempfile.TemporaryDirectory() as temp_dir:
-                try:
-                    # Extract zip file
-                    with zipfile.ZipFile(uploaded_zip, 'r') as zip_ref:
-                        zip_ref.extractall(temp_dir)
+            try:
+                # Create a persistent temporary directory
+                if 'temp_dir' not in st.session_state:
+                    st.session_state.temp_dir = tempfile.mkdtemp()
+                
+                temp_dir = st.session_state.temp_dir
+                
+                # Clear previous extraction if exists
+                for item in os.listdir(temp_dir):
+                    item_path = os.path.join(temp_dir, item)
+                    if os.path.isfile(item_path):
+                        os.unlink(item_path)
+                    elif os.path.isdir(item_path):
+                        shutil.rmtree(item_path)
+                
+                # Extract zip file
+                with zipfile.ZipFile(uploaded_zip, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+                
+                # Find the main dataset directory - handle nested structures
+                extracted_items = os.listdir(temp_dir)
+                dataset_path = temp_dir
+                
+                # If there's only one item and it's a directory, use that
+                if len(extracted_items) == 1 and os.path.isdir(os.path.join(temp_dir, extracted_items[0])):
+                    dataset_path = os.path.join(temp_dir, extracted_items[0])
+                    # If it's nested further, check one more level
+                    nested_items = os.listdir(dataset_path)
+                    if len(nested_items) == 1 and os.path.isdir(os.path.join(dataset_path, nested_items[0])):
+                        dataset_path = os.path.join(dataset_path, nested_items[0])
+                
+                st.info(f"🔍 Extracted dataset to: {dataset_path}")
+                st.info(f"📁 Found items: {os.listdir(dataset_path) if os.path.exists(dataset_path) else 'PATH NOT FOUND'}")
+                
+                # Validate dataset
+                with st.spinner("🔍 Validating dataset structure..."):
+                    is_valid, validation_msg = retrainer.validate_dataset_structure(dataset_path)
+                
+                if is_valid:
+                    st.success(f"✅ {validation_msg}")
                     
-                    # Find the main dataset directory
-                    extracted_items = os.listdir(temp_dir)
-                    if len(extracted_items) == 1 and os.path.isdir(os.path.join(temp_dir, extracted_items[0])):
-                        dataset_path = os.path.join(temp_dir, extracted_items[0])
-                    else:
-                        dataset_path = temp_dir
+                    # Show dataset statistics
+                    st.subheader("📊 Dataset Statistics")
+                    subdirs = [d for d in os.listdir(dataset_path) 
+                             if os.path.isdir(os.path.join(dataset_path, d)) and d in CLASS_NAMES]
                     
-                    # Validate dataset
-                    with st.spinner("🔍 Validating dataset structure..."):
-                        is_valid, validation_msg = retrainer.validate_dataset_structure(dataset_path)
+                    stats_data = []
+                    total_images = 0
+                    for class_dir in subdirs:
+                        class_path = os.path.join(dataset_path, class_dir)
+                        images = [f for f in os.listdir(class_path) 
+                                 if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+                        image_count = len(images)
+                        total_images += image_count
+                        stats_data.append({
+                            'Class': class_dir,
+                            'Images': image_count,
+                            'Status': '✅ Sufficient' if image_count >= 5 else '⚠️ Low'
+                        })
                     
-                    if is_valid:
-                        st.success(f"✅ {validation_msg}")
+                    if stats_data:
+                        stats_df = pd.DataFrame(stats_data)
+                        st.dataframe(stats_df, use_container_width=True)
+                        st.write(f"**Total Images**: {total_images}")
                         
-                        # Show dataset statistics
-                        st.subheader("📊 Dataset Statistics")
-                        subdirs = [d for d in os.listdir(dataset_path) 
-                                 if os.path.isdir(os.path.join(dataset_path, d)) and d in CLASS_NAMES]
-                        
-                        stats_data = []
-                        total_images = 0
-                        for class_dir in subdirs:
-                            class_path = os.path.join(dataset_path, class_dir)
-                            images = [f for f in os.listdir(class_path) 
-                                     if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-                            image_count = len(images)
-                            total_images += image_count
-                            stats_data.append({
-                                'Class': class_dir,
-                                'Images': image_count,
-                                'Status': '✅ Sufficient' if image_count >= 5 else '⚠️ Low'
-                            })
-                        
-                        if stats_data:
-                            stats_df = pd.DataFrame(stats_data)
-                            st.dataframe(stats_df, use_container_width=True)
-                            st.write(f"**Total Images**: {total_images}")
-                            
-                            # Store dataset path in session state
-                            st.session_state.dataset_path = dataset_path
-                            st.session_state.dataset_valid = True
-                            st.session_state.dataset_stats = stats_data
-                    else:
-                        st.error(f"❌ {validation_msg}")
-                        st.session_state.dataset_valid = False
-                        
-                except zipfile.BadZipFile:
-                    st.error("❌ Invalid ZIP file. Please upload a valid ZIP archive.")
-                except Exception as e:
-                    st.error(f"❌ Error processing dataset: {str(e)}")
+                        # Store dataset path in session state
+                        st.session_state.dataset_path = dataset_path
+                        st.session_state.dataset_valid = True
+                        st.session_state.dataset_stats = stats_data
+                else:
+                    st.error(f"❌ {validation_msg}")
+                    st.session_state.dataset_valid = False
+                    
+            except zipfile.BadZipFile:
+                st.error("❌ Invalid ZIP file. Please upload a valid ZIP archive.")
+            except Exception as e:
+                st.error(f"❌ Error processing dataset: {str(e)}")
+                st.info("💡 Try uploading a different ZIP file or check the folder structure.")
     
     with tab2:
         st.subheader("Training Configuration")
         
         if not st.session_state.get('dataset_valid', False):
             st.warning("📝 Please upload and validate a dataset in the 'Upload Dataset' tab first.")
+            return
+        
+        # Verify dataset path still exists
+        if 'dataset_path' in st.session_state and not os.path.exists(st.session_state.dataset_path):
+            st.error("❌ Dataset path no longer exists. Please re-upload the dataset.")
+            st.session_state.dataset_valid = False
             return
         
         col1, col2 = st.columns(2)
@@ -858,6 +944,11 @@ def show_retrain_interface():
         
         # Display training summary
         st.subheader("📋 Training Summary")
+        
+        # Verify dataset path exists before displaying
+        dataset_exists = 'dataset_path' in st.session_state and os.path.exists(st.session_state.dataset_path)
+        dataset_status = "✅ Available" if dataset_exists else "❌ Missing"
+        
         st.info(f"""
         **Configuration**:
         - Epochs: {epochs}
@@ -865,17 +956,36 @@ def show_retrain_interface():
         - Validation Split: {validation_split:.0%}
         - Batch Size: {batch_size}
         - Estimated Time: {epochs * 2} minutes
+        - Dataset Status: {dataset_status}
         """)
+        
+        if not dataset_exists:
+            st.error("Dataset path is no longer available. Please go back to the Upload Dataset tab and re-upload your data.")
+            return
         
         # Start training button
         if st.button("🚀 Start Model Retraining", type="primary", use_container_width=True):
-            if st.session_state.get('dataset_valid', False):
-                with st.spinner("🔄 Retraining model... This may take several minutes."):
+            if st.session_state.get('dataset_valid', False) and dataset_exists:
+                # Create a placeholder for training output
+                training_output = st.empty()
+                
+                with training_output.container():
+                    st.info("🔄 Starting retraining process...")
+                    
+                    # Double-check dataset path exists
+                    current_dataset_path = st.session_state.dataset_path
+                    if not os.path.exists(current_dataset_path):
+                        st.error(f"❌ Dataset path no longer exists: {current_dataset_path}")
+                        st.info("💡 Please re-upload your dataset in the Upload Dataset tab.")
+                        return
                     
                     try:
-                        # ACTUAL RETRAINING - Commented for safety, uncomment for real training
+                        # ACTUAL RETRAINING
+                        st.info(f"📁 Using dataset from: {current_dataset_path}")
+                        st.info(f"📊 Dataset contents: {os.listdir(current_dataset_path)}")
+                        
                         success, result, history = retrainer.retrain_model(
-                            st.session_state.dataset_path,
+                            current_dataset_path,
                             epochs=epochs,
                             learning_rate=learning_rate
                         )
@@ -903,6 +1013,10 @@ def show_retrain_interface():
                             
                     except Exception as e:
                         st.error(f"❌ Retraining failed: {str(e)}")
+                        st.info("💡 Troubleshooting tips:")
+                        st.info("- Ensure the dataset has the correct folder structure")
+                        st.info("- Check that all images are valid JPG/PNG files")
+                        st.info("- Verify the base model file exists and is accessible")
     
     with tab3:
         st.subheader("Training History and Results")
@@ -972,17 +1086,31 @@ def show_retrain_interface():
             st.dataframe(comparison_df, use_container_width=True)
             
             # Download retrained model
-            if st.session_state.get('new_model_path'):
+            if st.session_state.get('new_model_path') and os.path.exists(st.session_state.new_model_path):
+                with open(st.session_state.new_model_path, 'rb') as f:
+                    model_data = f.read()
+                
                 st.download_button(
                     label="📥 Download Retrained Model",
-                    data=open(st.session_state.new_model_path, 'rb'),
+                    data=model_data,
                     file_name=os.path.basename(st.session_state.new_model_path),
                     mime="application/octet-stream"
                 )
+            else:
+                st.warning("Retrained model file not found for download.")
         else:
             st.info("📝 No retraining results available. Complete a training session in the 'Training Configuration' tab first.")
 
-# -----------------------------
+# Add cleanup function to remove temp directory when done
+def cleanup_temp_dir():
+    if 'temp_dir' in st.session_state and os.path.exists(st.session_state.temp_dir):
+        try:
+            shutil.rmtree(st.session_state.temp_dir)
+            del st.session_state.temp_dir
+        except:
+            pass
+
+# Call cleanup when the app is done or when uploading a new dataset# -----------------------------
 # Other Pages
 # -----------------------------
 def show_data_insights():
@@ -1034,7 +1162,7 @@ def show_performance_monitor():
     with cols[4]:
         st.metric("AUC-ROC", "99.97%")
     
-    st.success("✅ **System Status**: All metrics within optimal range")
+    st.success(" **System Status**: All metrics within optimal range")
 
 # -----------------------------
 # Main Application
@@ -1054,40 +1182,40 @@ def main():
         st.session_state.retraining_complete = False
     
     # Sidebar
-    st.sidebar.title("🧭 Navigation")
+    st.sidebar.title(" Navigation")
     page = st.sidebar.radio("Go to", [
-        "📊 Dashboard", 
-        "🔍 Disease Detector",
-        "📈 Data Insights", 
-        "🔄 Retrain Model",
-        "🚀 Performance Monitor"
+        " Dashboard", 
+        " Disease Detector",
+        " Data Insights", 
+        " Retrain Model",
+        " Performance Monitor"
     ])
     
     # Model status in sidebar
     st.sidebar.markdown("---")
     st.sidebar.subheader("🤖 Model Status")
     if predictor.model is not None:
-        st.sidebar.success("✅ Model: Loaded")
+        st.sidebar.success("Model: Loaded")
         st.sidebar.write(f"**Accuracy**: {MODEL_METRICS['accuracy']*100:.2f}%")
         st.sidebar.write(f"**Classes**: {len(CLASS_NAMES)}")
     else:
-        st.sidebar.error("❌ Model: Failed to Load")
-        st.sidebar.info("💡 Check: \n- Model file path\n- TensorFlow installation\n- File permissions")
+        st.sidebar.error(" Model: Failed to Load")
+        st.sidebar.info(" Check: \n- Model file path\n- TensorFlow installation\n- File permissions")
     
     # Retraining status
     if st.session_state.get('retraining_complete', False):
-        st.sidebar.success("🔄 Retraining: Completed")
+        st.sidebar.success(" Retraining: Completed")
     
     # Page routing
-    if page == "📊 Dashboard":
+    if page == " Dashboard":
         show_dashboard()
-    elif page == "🔍 Disease Detector":
+    elif page == " Disease Detector":
         show_disease_detector()
-    elif page == "📈 Data Insights":
+    elif page == " Data Insights":
         show_data_insights()
-    elif page == "🔄 Retrain Model":
+    elif page == " Retrain Model":
         show_retrain_interface()
-    elif page == "🚀 Performance Monitor":
+    elif page == " Performance Monitor":
         show_performance_monitor()
 
 if __name__ == "__main__":
