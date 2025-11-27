@@ -424,7 +424,7 @@ class ModelRetrainer:
             os.makedirs(models_dir, exist_ok=True)
             retrained_path = os.path.join(models_dir, f'retrained_model_{timestamp}.h5')
             
-            st.info("💾 Saving retrained model...")
+            st.info("Saving retrained model...")
             self.model.save(retrained_path)
             
             # Verify the model was saved
@@ -922,7 +922,7 @@ def show_retrain_interface():
         
         # Verify dataset path still exists
         if 'dataset_path' in st.session_state and not os.path.exists(st.session_state.dataset_path):
-            st.error("❌ Dataset path no longer exists. Please re-upload the dataset.")
+            st.error("Dataset path no longer exists. Please re-upload the dataset.")
             st.session_state.dataset_valid = False
             return
         
@@ -1099,7 +1099,7 @@ def show_retrain_interface():
             else:
                 st.warning("Retrained model file not found for download.")
         else:
-            st.info("📝 No retraining results available. Complete a training session in the 'Training Configuration' tab first.")
+            st.info("No retraining results available. Complete a training session in the 'Training Configuration' tab first.")
 
 # Add cleanup function to remove temp directory when done
 def cleanup_temp_dir():
@@ -1114,7 +1114,7 @@ def cleanup_temp_dir():
 # Other Pages
 # -----------------------------
 def show_data_insights():
-    st.header("📊 Data Insights & Analytics")
+    st.header("Data Insights & Analytics")
     
     # Class distribution
     st.subheader("Disease Class Distribution")
@@ -1147,7 +1147,7 @@ def show_data_insights():
         st.plotly_chart(fig_bar, use_container_width=True)
 
 def show_performance_monitor():
-    st.header("📈 Performance Monitoring")
+    st.header("Performance Monitoring")
     
     st.subheader("Model Performance Metrics")
     cols = st.columns(5)
@@ -1193,7 +1193,7 @@ def main():
     
     # Model status in sidebar
     st.sidebar.markdown("---")
-    st.sidebar.subheader("🤖 Model Status")
+    st.sidebar.subheader("Model Status")
     if predictor.model is not None:
         st.sidebar.success("Model: Loaded")
         st.sidebar.write(f"**Accuracy**: {MODEL_METRICS['accuracy']*100:.2f}%")
