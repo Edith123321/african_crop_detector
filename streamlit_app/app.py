@@ -83,7 +83,7 @@ class CropDiseasePredictor:
         """Load the TensorFlow model with comprehensive error handling"""
         try:
             if not os.path.exists(self.model_path):
-                st.sidebar.warning(f"⚠️ Model file not found at: {self.model_path}")
+                st.sidebar.warning(f"Model file not found at: {self.model_path}")
                 # Try to find alternative paths
                 alternative_paths = [
                     os.path.join(BASE_DIR, 'models/crop_disease_model.h5'),
@@ -94,23 +94,23 @@ class CropDiseasePredictor:
                 for alt_path in alternative_paths:
                     if os.path.exists(alt_path):
                         self.model_path = alt_path
-                        st.sidebar.info(f"📁 Found model at: {alt_path}")
+                        st.sidebar.info(f"Found model at: {alt_path}")
                         break
                 else:
-                    st.sidebar.error("❌ Could not find model file. Please check the path.")
+                    st.sidebar.error("Could not find model file. Please check the path.")
                     self.model = None
                     return
             
-            st.sidebar.info("🔄 Loading AI model...")
+            st.sidebar.info("Loading AI model...")
             self.model = tf.keras.models.load_model(self.model_path, compile=False)
-            st.sidebar.success("✅ Model loaded successfully!")
+            st.sidebar.success("Model loaded successfully!")
             
             # Warm up the model
             self._warm_up_model()
             
         except Exception as e:
-            st.sidebar.error(f"❌ Failed to load model: {str(e)}")
-            st.sidebar.info("💡 Try: pip install tensorflow --upgrade")
+            st.sidebar.error(f"Failed to load model: {str(e)}")
+            st.sidebar.info("Try: pip install tensorflow --upgrade")
             self.model = None
     
     def _warm_up_model(self):
@@ -119,7 +119,7 @@ class CropDiseasePredictor:
             dummy_input = np.random.random((1, 224, 224, 3)).astype(np.float32)
             _ = self.model.predict(dummy_input, verbose=0)
         except Exception as e:
-            st.sidebar.warning(f"⚠️ Model warm-up failed: {str(e)}")
+            st.sidebar.warning(f"Model warm-up failed: {str(e)}")
     
     def preprocess_image(self, image):
         """Preprocess image for EfficientNet model with error handling"""
@@ -210,7 +210,7 @@ class CropDiseasePredictor:
         
         for i, (image_name, image) in enumerate(images):
             try:
-                status_text.text(f"🔍 Analyzing {image_name}... ({i+1}/{len(images)})")
+                status_text.text(f"Analyzing {image_name}... ({i+1}/{len(images)})")
                 
                 result = self.predict_single_image(image)
                 result['image_name'] = image_name
@@ -369,14 +369,14 @@ class ModelRetrainer:
             if not os.path.exists(self.base_model_path):
                 return False, f"Base model not found at {self.base_model_path}", None
                 
-            st.info("🔄 Loading base model...")
+            st.info("Loading base model...")
             self.model = tf.keras.models.load_model(self.base_model_path)
             
             # Prepare data with progress tracking
-            st.info("📊 Preparing training data...")
+            st.info("Preparing training data...")
             train_dataset, val_dataset = self.prepare_training_data(dataset_path)
             
-            st.info(f"📈 Training data prepared: {len(train_dataset)} batches for training, {len(val_dataset)} for validation")
+            st.info(f"Training data prepared: {len(train_dataset)} batches for training, {len(val_dataset)} for validation")
             
             # Unfreeze some layers for fine-tuning
             trainable_count = 0
@@ -385,7 +385,7 @@ class ModelRetrainer:
                     layer.trainable = True
                     trainable_count += 1
             
-            st.info(f"🔧 Unfrozen {trainable_count} layers for fine-tuning")
+            st.info(f"Unfrozen {trainable_count} layers for fine-tuning")
             
             # Compile with lower learning rate for fine-tuning
             self.model.compile(
@@ -409,7 +409,7 @@ class ModelRetrainer:
             ]
             
             # Train the model with progress tracking
-            st.info(f"🚀 Starting training for {epochs} epochs...")
+            st.info(f"Starting training for {epochs} epochs...")
             self.retrain_history = self.model.fit(
                 train_dataset,
                 validation_data=val_dataset,
@@ -430,7 +430,7 @@ class ModelRetrainer:
             # Verify the model was saved
             if os.path.exists(retrained_path):
                 file_size = os.path.getsize(retrained_path) / (1024 * 1024)  # MB
-                st.info(f"✅ Model saved successfully: {retrained_path} ({file_size:.1f} MB)")
+                st.info(f"Model saved successfully: {retrained_path} ({file_size:.1f} MB)")
             else:
                 return False, "Failed to save retrained model", None
             
@@ -448,7 +448,7 @@ retrainer = ModelRetrainer(MODEL_PATH, CLASS_NAMES)
 # Treatment Recommendations
 # -----------------------------
 def show_treatment_recommendations(disease):
-    st.subheader("🩺 Treatment Recommendations")
+    st.subheader("Treatment Recommendations")
     
     treatments = {
         "Pepper__bell___Bacterial_spot": {
@@ -517,19 +517,19 @@ def show_treatment_recommendations(disease):
         t = treatments[disease]
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.info(f"**🌱 Organic Treatment**\n\n{t['organic']}")
+            st.info(f"**Organic Treatment**\n\n{t['organic']}")
         with col2:
-            st.warning(f"**🧪 Chemical Treatment**\n\n{t['chemical']}")
+            st.warning(f"**Chemical Treatment**\n\n{t['chemical']}")
         with col3:
-            st.success(f"**🛡️ Prevention**\n\n{t['prevention']}")
+            st.success(f"**Prevention**\n\n{t['prevention']}")
     else:
-        st.info("✅ **Healthy Plant** - Continue good agricultural practices and regular monitoring.")
+        st.info("**Healthy Plant** - Continue good agricultural practices and regular monitoring.")
 
 # -----------------------------
 # Dashboard Page
 # -----------------------------
 def show_dashboard():
-    st.header("📊 System Dashboard")
+    st.header("System Dashboard")
     
     col1, col2, col3, col4, col5 = st.columns(5)
     
@@ -545,16 +545,16 @@ def show_dashboard():
         st.metric("AUC Score", f"{MODEL_METRICS['auc']*100:.1f}%")
     
     if predictor.model is not None:
-        st.success("🎯 **Model Status**: Loaded and Ready - Using Real AI Model")
+        st.success("**Model Status**: Loaded and Ready - Using Real AI Model")
     else:
-        st.error("❌ **Model Status**: Failed to Load - Check model file")
+        st.error("**Model Status**: Failed to Load - Check model file")
     
-    st.subheader("📈 System Information")
+    st.subheader("System Information")
     col1, col2 = st.columns(2)
     
     with col1:
         st.info("""
-        **System Status**: ✅ Operational  
+        **System Status**: Operational  
         **Model Version**: v2.0  
         **Classes Supported**: 15  
         **Input Size**: 224×224px
@@ -573,11 +573,11 @@ def show_dashboard():
 # Disease Detection Page with Multiple Image Support
 # -----------------------------
 def show_disease_detector():
-    st.header("🔍 Crop Disease Detection")
+    st.header("Crop Disease Detection")
     
     if predictor.model is None:
         st.error("""
-        ❌ **Model Not Loaded**
+        **Model Not Loaded**
         
         The AI model failed to load. Please check:
         - Model file exists at: `models/crop_disease_model.h5`
@@ -620,23 +620,23 @@ def show_disease_detector():
                     image = Image.open(uploaded_files[0])
                     st.image(image, caption="Uploaded Image", use_column_width=True)
                 except UnidentifiedImageError:
-                    st.error("❌ Invalid image file. Please upload a valid JPG, JPEG, or PNG file.")
+                    st.error("Invalid image file. Please upload a valid JPG, JPEG, or PNG file.")
                     return
                 except Exception as e:
-                    st.error(f"❌ Error loading image: {str(e)}")
+                    st.error(f"Error loading image: {str(e)}")
                     return
             else:
-                st.subheader(f"📁 Uploaded Images ({len(uploaded_files)})")
+                st.subheader(f"Uploaded Images ({len(uploaded_files)})")
                 # Display first few images
                 for i, uploaded_file in enumerate(uploaded_files[:4]):
                     try:
                         image = Image.open(uploaded_file)
                         st.image(image, caption=f"Image {i+1}: {uploaded_file.name}", use_column_width=True)
                     except Exception as e:
-                        st.error(f"❌ Error loading {uploaded_file.name}: {str(e)}")
+                        st.error(f"Error loading {uploaded_file.name}: {str(e)}")
 
             if st.button("Analyze for Diseases", type="primary", key="analyze_btn"):
-                with st.spinner("🔬 AI Model Analyzing Image(s)..."):
+                with st.spinner("AI Model Analyzing Image(s)..."):
                     try:
                         # Process images
                         images_to_process = []
@@ -645,10 +645,10 @@ def show_disease_detector():
                                 image = Image.open(uploaded_file)
                                 images_to_process.append((uploaded_file.name, image))
                             except Exception as e:
-                                st.warning(f"⚠️ Skipped {uploaded_file.name}: {str(e)}")
+                                st.warning(f"Skipped {uploaded_file.name}: {str(e)}")
                         
                         if not images_to_process:
-                            st.error("❌ No valid images to process.")
+                            st.error("No valid images to process.")
                             return
                         
                         # Make predictions
@@ -662,12 +662,12 @@ def show_disease_detector():
                         display_prediction_results(results, upload_option)
                         
                     except Exception as e:
-                        st.error(f"❌ Analysis failed: {str(e)}")
+                        st.error(f"Analysis failed: {str(e)}")
     
     with col2:
         if uploaded_files:
             # Model information
-            st.subheader("🤖 AI Model Information")
+            st.subheader("AI Model Information")
             
             st.info(f"""
             **Model Type**: TensorFlow/Keras
@@ -692,7 +692,7 @@ def display_prediction_results(results, upload_option):
         result = results[0]
         
         if 'error' in result:
-            st.error(f"❌ Prediction Error: {result['error']}")
+            st.error(f"Prediction Error: {result['error']}")
             return
             
         predicted_class = result['predicted_class']
@@ -700,11 +700,11 @@ def display_prediction_results(results, upload_option):
 
         # Display results
         if "healthy" in predicted_class.lower():
-            st.success(f"✅ **Healthy Plant Detected**")
+            st.success(f"**Healthy Plant Detected**")
             st.write(f"**Confidence**: {confidence:.1%}")
             st.balloons()
         else:
-            st.error(f"🚨 **Disease Detected**: {predicted_class}")
+            st.error(f"**Disease Detected**: {predicted_class}")
             st.write(f"**Confidence**: {confidence:.1%}")
         
         show_treatment_recommendations(predicted_class)
@@ -729,14 +729,14 @@ def display_prediction_results(results, upload_option):
         st.plotly_chart(fig_gauge, use_container_width=True)
 
         # Top predictions
-        st.subheader("📋 Top Predictions")
+        st.subheader("Top Predictions")
         df = pd.DataFrame(result['top_predictions'])
         styled_df = df.style.format({'confidence': '{:.1%}'})
         st.dataframe(styled_df, use_container_width=True)
     
     else:
         # Multiple images results
-        st.subheader("📊 Batch Analysis Results")
+        st.subheader("Batch Analysis Results")
         
         # Prepare results dataframe
         results_data = []
@@ -745,12 +745,12 @@ def display_prediction_results(results, upload_option):
                 'Image': result.get('image_name', 'Unknown'),
                 'Prediction': result.get('predicted_class', 'Error'),
                 'Confidence': f"{result.get('confidence', 0):.1%}",
-                'Status': '✅' if 'healthy' in result.get('predicted_class', '').lower() else '🚨' if result.get('confidence', 0) > 0.7 else '⚠️'
+                'Status': 'Healthy' if 'healthy' in result.get('predicted_class', '').lower() else 'Disease' if result.get('confidence', 0) > 0.7 else 'Low Confidence'
             }
             if 'error' in result:
                 row['Prediction'] = f"Error: {result['error']}"
                 row['Confidence'] = "0.0%"
-                row['Status'] = '❌'
+                row['Status'] = 'Error'
             results_data.append(row)
         
         results_df = pd.DataFrame(results_data)
@@ -773,7 +773,7 @@ def display_prediction_results(results, upload_option):
 # Retraining Interface - ACTUAL IMPLEMENTATION
 # -----------------------------
 def show_retrain_interface():
-    st.header("🔄 Model Retraining Interface")
+    st.header("Model Retraining Interface")
     
     st.info("""
     **Retraining Features**:
@@ -785,13 +785,13 @@ def show_retrain_interface():
     """)
     
     # Create tabs for different retraining options
-    tab1, tab2, tab3 = st.tabs(["📤 Upload Dataset", "⚙️ Training Configuration", "📊 Training Results"])
+    tab1, tab2, tab3 = st.tabs(["Upload Dataset", "Training Configuration", "Training Results"])
     
     with tab1:
         st.subheader("Upload New Training Data")
         
         # Dataset structure guide
-        with st.expander("📁 Dataset Structure Requirements (Click to Expand)"):
+        with st.expander("Dataset Structure Requirements (Click to Expand)"):
             st.markdown("""
             ### Required Dataset Structure:
             ```
@@ -865,18 +865,18 @@ def show_retrain_interface():
                     if len(nested_items) == 1 and os.path.isdir(os.path.join(dataset_path, nested_items[0])):
                         dataset_path = os.path.join(dataset_path, nested_items[0])
                 
-                st.info(f"🔍 Extracted dataset to: {dataset_path}")
-                st.info(f"📁 Found items: {os.listdir(dataset_path) if os.path.exists(dataset_path) else 'PATH NOT FOUND'}")
+                st.info(f"Extracted dataset to: {dataset_path}")
+                st.info(f"Found items: {os.listdir(dataset_path) if os.path.exists(dataset_path) else 'PATH NOT FOUND'}")
                 
                 # Validate dataset
-                with st.spinner("🔍 Validating dataset structure..."):
+                with st.spinner("Validating dataset structure..."):
                     is_valid, validation_msg = retrainer.validate_dataset_structure(dataset_path)
                 
                 if is_valid:
-                    st.success(f"✅ {validation_msg}")
+                    st.success(f"{validation_msg}")
                     
                     # Show dataset statistics
-                    st.subheader("📊 Dataset Statistics")
+                    st.subheader("Dataset Statistics")
                     subdirs = [d for d in os.listdir(dataset_path) 
                              if os.path.isdir(os.path.join(dataset_path, d)) and d in CLASS_NAMES]
                     
@@ -891,7 +891,7 @@ def show_retrain_interface():
                         stats_data.append({
                             'Class': class_dir,
                             'Images': image_count,
-                            'Status': '✅ Sufficient' if image_count >= 5 else '⚠️ Low'
+                            'Status': 'Sufficient' if image_count >= 5 else 'Low'
                         })
                     
                     if stats_data:
@@ -904,20 +904,20 @@ def show_retrain_interface():
                         st.session_state.dataset_valid = True
                         st.session_state.dataset_stats = stats_data
                 else:
-                    st.error(f"❌ {validation_msg}")
+                    st.error(f"{validation_msg}")
                     st.session_state.dataset_valid = False
                     
             except zipfile.BadZipFile:
-                st.error("❌ Invalid ZIP file. Please upload a valid ZIP archive.")
+                st.error("Invalid ZIP file. Please upload a valid ZIP archive.")
             except Exception as e:
-                st.error(f"❌ Error processing dataset: {str(e)}")
-                st.info("💡 Try uploading a different ZIP file or check the folder structure.")
+                st.error(f"Error processing dataset: {str(e)}")
+                st.info("Try uploading a different ZIP file or check the folder structure.")
     
     with tab2:
         st.subheader("Training Configuration")
         
         if not st.session_state.get('dataset_valid', False):
-            st.warning("📝 Please upload and validate a dataset in the 'Upload Dataset' tab first.")
+            st.warning("Please upload and validate a dataset in the 'Upload Dataset' tab first.")
             return
         
         # Verify dataset path still exists
@@ -943,11 +943,11 @@ def show_retrain_interface():
                                     help="Number of images processed in each training step")
         
         # Display training summary
-        st.subheader("📋 Training Summary")
+        st.subheader("Training Summary")
         
         # Verify dataset path exists before displaying
         dataset_exists = 'dataset_path' in st.session_state and os.path.exists(st.session_state.dataset_path)
-        dataset_status = "✅ Available" if dataset_exists else "❌ Missing"
+        dataset_status = "Available" if dataset_exists else "Missing"
         
         st.info(f"""
         **Configuration**:
@@ -964,25 +964,25 @@ def show_retrain_interface():
             return
         
         # Start training button
-        if st.button("🚀 Start Model Retraining", type="primary", use_container_width=True):
+        if st.button("Start Model Retraining", type="primary", use_container_width=True):
             if st.session_state.get('dataset_valid', False) and dataset_exists:
                 # Create a placeholder for training output
                 training_output = st.empty()
                 
                 with training_output.container():
-                    st.info("🔄 Starting retraining process...")
+                    st.info("Starting retraining process...")
                     
                     # Double-check dataset path exists
                     current_dataset_path = st.session_state.dataset_path
                     if not os.path.exists(current_dataset_path):
-                        st.error(f"❌ Dataset path no longer exists: {current_dataset_path}")
-                        st.info("💡 Please re-upload your dataset in the Upload Dataset tab.")
+                        st.error(f"Dataset path no longer exists: {current_dataset_path}")
+                        st.info("Please re-upload your dataset in the Upload Dataset tab.")
                         return
                     
                     try:
                         # ACTUAL RETRAINING
-                        st.info(f"📁 Using dataset from: {current_dataset_path}")
-                        st.info(f"📊 Dataset contents: {os.listdir(current_dataset_path)}")
+                        st.info(f"Using dataset from: {current_dataset_path}")
+                        st.info(f"Dataset contents: {os.listdir(current_dataset_path)}")
                         
                         success, result, history = retrainer.retrain_model(
                             current_dataset_path,
@@ -991,13 +991,13 @@ def show_retrain_interface():
                         )
                         
                         if success:
-                            st.success("✅ Model retraining completed successfully!")
+                            st.success("Model retraining completed successfully!")
                             st.session_state.retrain_history = history
                             st.session_state.new_model_path = result
                             st.session_state.retraining_complete = True
                             
                             # Show training results
-                            st.subheader("📈 Training Results")
+                            st.subheader("Training Results")
                             col1, col2 = st.columns(2)
                             
                             with col1:
@@ -1009,11 +1009,11 @@ def show_retrain_interface():
                                 st.metric("Final Validation Loss", f"{final_loss:.4f}")
                         
                         else:
-                            st.error(f"❌ {result}")
+                            st.error(f"{result}")
                             
                     except Exception as e:
-                        st.error(f"❌ Retraining failed: {str(e)}")
-                        st.info("💡 Troubleshooting tips:")
+                        st.error(f"Retraining failed: {str(e)}")
+                        st.info("Troubleshooting tips:")
                         st.info("- Ensure the dataset has the correct folder structure")
                         st.info("- Check that all images are valid JPG/PNG files")
                         st.info("- Verify the base model file exists and is accessible")
@@ -1075,7 +1075,7 @@ def show_retrain_interface():
                     st.plotly_chart(fig_loss, use_container_width=True)
             
             # Model comparison
-            st.subheader("🆚 Model Comparison")
+            st.subheader("Model Comparison")
             comparison_data = {
                 'Metric': ['Accuracy', 'Precision', 'Recall', 'F1-Score'],
                 'Original Model': [99.4, 99.4, 99.4, 99.4],
@@ -1091,7 +1091,7 @@ def show_retrain_interface():
                     model_data = f.read()
                 
                 st.download_button(
-                    label="📥 Download Retrained Model",
+                    label="Download Retrained Model",
                     data=model_data,
                     file_name=os.path.basename(st.session_state.new_model_path),
                     mime="application/octet-stream"
