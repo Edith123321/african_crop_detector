@@ -8,7 +8,8 @@ An AI-powered web application for detecting diseases in African staple crops usi
 
 ##  Live Demo
 
-[Youtube video](https://youtu.be/mCCQnW7ijo0))
+[Youtube video](https://youtu.be/mCCQnW7ijo0)
+[Url Link ]()
 
 ##  Table of Contents
 
