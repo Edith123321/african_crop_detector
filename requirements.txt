@@ -3,7 +3,7 @@ pandas==2.0.3
 plotly==5.15.0
 tensorflow==2.14.0
 numpy==1.26.4
-
+tensorflow-hub==0.14.2
 flask==2.3.3
 flask-cors==4.0.0
 gunicorn==21.2.0
