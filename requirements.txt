@@ -1,26 +1,17 @@
-# Streamlit
+tensorflow==2.14.0
+keras==2.14.0
+ml-dtypes==0.2.0
+protobuf==3.20.3
+tensorboard<2.15
 streamlit==1.28.2
-
-# Data + Utils
-pandas==2.0.3
 numpy==1.26.4
+pandas==2.0.3
 pillow==10.4.0
 matplotlib==3.7.2
 seaborn==0.12.2
-
-# TensorFlow + TF Hub (compatible with Python 3.10)
-tensorflow==2.14.0
-tensorflow-hub==0.14.0
-protobuf==3.20.3
-
-# Plotting
 plotly==5.15.0
-
-# API layer
 flask==2.3.3
 flask-cors==4.0.0
 gunicorn==21.2.0
-
-# Markdown & Logging
-markdown-it-py==2.2.0
 rich==13.7.0
+markdown-it-py==2.2.0

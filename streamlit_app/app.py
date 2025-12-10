@@ -13,6 +13,9 @@ import shutil
 from datetime import datetime
 import zipfile
 import io
+import tensorflow as tf
+from tensorflow.keras.models import load_model
+from tensorflow.keras.layers import Input
 
 # Suppress warnings
 warnings.filterwarnings('ignore')
@@ -1181,15 +1184,20 @@ def main():
     if 'retraining_complete' not in st.session_state:
         st.session_state.retraining_complete = False
     
-    # Sidebar
+    # # Sidebar
     st.sidebar.title(" Navigation")
+    # page = st.sidebar.radio(
+    # "Go to",
+    # ["Dashboard", "Disease Detector", "Data Insights"],
+    # index=0  # sets default selection
+
     page = st.sidebar.radio("Go to", [
         " Dashboard", 
         " Disease Detector",
         " Data Insights", 
         " Retrain Model",
         " Performance Monitor"
-    ])
+    ],  index=0 )
     
     # Model status in sidebar
     st.sidebar.markdown("---")
