@@ -8,15 +8,15 @@ pillow==10.4.0
 matplotlib==3.7.2
 seaborn==0.12.2
 
-# TensorFlow + ML
+# TensorFlow + TF Hub (compatible with Python 3.10)
 tensorflow==2.14.0
-tensorflow-hub==0.14.2
-protobuf==3.20.3   # Required by TensorFlow 2.14 — do NOT upgrade
+tensorflow-hub==0.14.0
+protobuf==3.20.3
 
 # Plotting
 plotly==5.15.0
 
-# API layer (if you need it)
+# API layer
 flask==2.3.3
 flask-cors==4.0.0
 gunicorn==21.2.0
